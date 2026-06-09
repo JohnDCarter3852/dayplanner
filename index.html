@@ -1,0 +1,1411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Day">
+<title>Day Planner</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Century+Gothic&display=swap');
+:root{
+  --bg:#F8F6F2;--white:#FFF;--ink:#1A1714;--ink2:#5C5650;
+  --muted:#B0A898;--line:#EDEAE4;
+  --blue:#1D4ED8;--blue-l:rgba(29,78,216,.08);
+  --green:#0D9373;--green-l:rgba(13,147,115,.09);
+  --amber:#B45309;--amber-l:rgba(180,83,9,.09);
+  --red:#DC2626;--red-l:rgba(220,38,38,.08);
+  --purple:#7C3AED;--purple-l:rgba(124,58,237,.08);
+  --teal:#0891B2;--teal-l:rgba(8,145,178,.08);
+  --shadow:0 1px 12px rgba(0,0,0,.07);--r:14px;
+  --nav:62px;
+  --font:'Century Gothic',CenturyGothic,AppleGothic,sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+
+body{
+  font-family:var(--font);background:var(--bg);color:var(--ink);
+  min-height:100dvh;
+  padding-top:env(safe-area-inset-top,44px);
+  padding-right:calc(var(--nav) + env(safe-area-inset-right,0px));
+  padding-bottom:env(safe-area-inset-bottom,16px);
+}
+
+/* ══ RIGHT RAIL ══ */
+.rail{
+  position:fixed;top:0;right:0;bottom:0;
+  width:var(--nav);
+  background:var(--ink);
+  display:flex;flex-direction:column;align-items:center;
+  padding-top:calc(env(safe-area-inset-top,44px)+10px);
+  padding-bottom:calc(env(safe-area-inset-bottom,0px)+10px);
+  z-index:40;
+  gap:2px;
+}
+
+/* divider line in rail */
+.rail-div{width:28px;height:1px;background:rgba(255,255,255,.1);margin:6px 0;flex-shrink:0;}
+
+/* main nav buttons — black bg, white icon */
+.rail-btn{
+  width:46px;height:50px;border-radius:12px;border:none;
+  background:transparent;
+  cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:3px;font-family:var(--font);font-size:7.5px;font-weight:700;
+  color:rgba(255,255,255,.4);letter-spacing:.05em;text-transform:uppercase;
+  transition:all .18s;flex-shrink:0;
+}
+.rail-btn svg{
+  width:20px;height:20px;fill:none;stroke:rgba(255,255,255,.4);
+  stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;
+  transition:stroke .18s;
+}
+.rail-btn.active{background:rgba(255,255,255,.12);color:white;}
+.rail-btn.active svg{stroke:white;}
+.rail-btn:active{background:rgba(255,255,255,.08);}
+
+/* small utility buttons (settings, refresh) — same style */
+.rail-util{
+  width:40px;height:40px;border-radius:10px;border:none;
+  background:transparent;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .18s;flex-shrink:0;
+}
+.rail-util svg{width:17px;height:17px;fill:none;stroke:rgba(255,255,255,.5);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;}
+.rail-util:active{background:rgba(255,255,255,.1);}
+
+.rail-spacer{flex:1;}
+
+/* mic — white circle at very bottom */
+.rail-mic{
+  width:44px;height:44px;border-radius:50%;border:none;
+  background:white;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 2px 12px rgba(0,0,0,.3);transition:all .2s;flex-shrink:0;
+  margin-bottom:2px;
+}
+.rail-mic svg{width:20px;height:20px;fill:none;stroke:var(--ink);stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;}
+.rail-mic.on{background:var(--red);animation:pulse 1.1s ease infinite;}
+.rail-mic.on svg{stroke:white;}
+@keyframes pulse{0%,100%{box-shadow:0 2px 12px rgba(220,38,38,.3);}50%{box-shadow:0 4px 22px rgba(220,38,38,.6);transform:scale(1.06);}}
+
+/* ══ MAIN ══ */
+.main{padding:0 14px 32px 18px;}
+
+/* greeting pushed down for one-hand reach */
+.hdr{padding-top:28px;margin-bottom:16px;}
+.hdr .dt{font-size:11px;color:var(--muted);letter-spacing:.07em;text-transform:uppercase;margin-bottom:4px;}
+.hdr .greet{font-size:26px;font-weight:700;letter-spacing:-.4px;line-height:1.1;color:var(--ink);}
+
+/* STATS */
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:16px;}
+.stat{background:var(--white);border-radius:var(--r);padding:12px 10px;text-align:center;box-shadow:var(--shadow);}
+.sval{font-size:22px;font-weight:700;line-height:1;}
+.sval.b{color:var(--blue);}.sval.g{color:var(--green);}.sval.r{color:var(--red);}.sval.a{color:var(--amber);}
+.slbl{font-size:9px;color:var(--muted);margin-top:3px;text-transform:uppercase;letter-spacing:.06em;}
+
+/* PANELS */
+.panel{display:none;}.panel.active{display:block;}
+
+/* SECTION HEADER */
+.sh2{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+.st{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);}
+.sa{font-size:12px;font-weight:700;color:var(--blue);background:none;border:none;font-family:var(--font);cursor:pointer;}
+
+/* CARD */
+.card{background:var(--white);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;margin-bottom:12px;}
+
+/* BRIEFING */
+.brief{background:var(--ink);border-radius:var(--r);padding:16px;color:white;margin-bottom:14px;}
+.brief-lbl{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.4);margin-bottom:6px;}
+.brief-txt{font-size:13px;line-height:1.65;color:rgba(255,255,255,.88);}
+.brief-btn{margin-top:11px;padding:9px 14px;border-radius:10px;border:none;background:rgba(255,255,255,.1);color:white;font-family:var(--font);font-size:13px;font-weight:700;cursor:pointer;width:100%;}
+.brief-btn:disabled{opacity:.5;}
+
+/* EVENT */
+.ev{display:flex;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line);align-items:flex-start;animation:fu .25s ease both;}
+.ev:last-child{border-bottom:none;}
+.ev-tc{text-align:right;flex-shrink:0;width:34px;}
+.ev-hr{font-size:13px;font-weight:700;line-height:1;}
+.ev-mn{font-size:10px;color:var(--muted);}
+.ev-bar{width:3px;border-radius:2px;background:var(--blue);flex-shrink:0;margin-top:2px;min-height:32px;}
+.ev-bar.g{background:var(--green);}.ev-bar.a{background:var(--amber);}.ev-bar.t{background:var(--teal);}
+.ev-bd{flex:1;min-width:0;}
+.ev-title{font-size:13px;font-weight:700;line-height:1.3;}
+.ev-sub{font-size:11px;color:var(--muted);margin-top:2px;}
+.ev-badges{display:flex;gap:5px;margin-top:5px;flex-wrap:wrap;}
+.badge{font-size:9px;font-weight:700;padding:2px 7px;border-radius:20px;text-transform:uppercase;letter-spacing:.04em;}
+.bb{background:var(--blue-l);color:var(--blue);}
+.bg{background:var(--green-l);color:var(--green);}
+.ba{background:var(--amber-l);color:var(--amber);}
+.br{background:var(--red-l);color:var(--red);}
+.bp{background:var(--purple-l);color:var(--purple);}
+.bt{background:var(--teal-l);color:var(--teal);}
+.ev-leave{display:flex;align-items:center;gap:4px;margin-top:6px;font-size:11px;color:var(--amber);font-weight:600;}
+.ev-leave svg{width:11px;height:11px;fill:none;stroke:var(--amber);stroke-width:2;}
+.ev-acts{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;}
+.ev-act{padding:5px 10px;border-radius:8px;border:1.5px solid var(--line);background:transparent;font-family:var(--font);font-size:11px;font-weight:700;color:var(--ink2);cursor:pointer;}
+/* TODO */
+.todo{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line);animation:fu .25s ease both;}
+.todo:last-child{border-bottom:none;}
+.chk{width:21px;height:21px;border-radius:50%;border:2px solid var(--line);background:transparent;flex-shrink:0;cursor:pointer;margin-top:1px;transition:all .2s;display:flex;align-items:center;justify-content:center;}
+.chk svg{width:11px;height:11px;fill:none;stroke:transparent;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;}
+.todo.done .chk{background:var(--green);border-color:var(--green);}
+.todo.done .chk svg{stroke:white;}
+.todo.done .ttl{text-decoration:line-through;color:var(--muted);}
+.tbd{flex:1;min-width:0;}
+.ttl{font-size:13px;font-weight:600;line-height:1.3;}
+.tmeta{display:flex;gap:6px;margin-top:4px;align-items:center;flex-wrap:wrap;}
+.ttime{font-size:10px;color:var(--muted);display:flex;align-items:center;gap:2px;}
+.ttime svg{width:10px;height:10px;fill:none;stroke:var(--muted);stroke-width:2;}
+.tedit{font-family:var(--font);font-size:10px;color:var(--blue);background:none;border:none;cursor:pointer;text-decoration:underline;padding:0;}
+.tdel{background:none;border:none;cursor:pointer;padding:2px;flex-shrink:0;}
+.tdel svg{width:15px;height:15px;fill:none;stroke:var(--muted);stroke-width:2;stroke-linecap:round;}
+
+/* CALLBACK */
+.cb{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line);animation:fu .25s ease both;}
+.cb:last-child{border-bottom:none;}
+.cb-av{width:36px;height:36px;border-radius:50%;background:var(--red-l);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.cb-av svg{width:18px;height:18px;fill:none;stroke:var(--red);stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;}
+.cb-bd{flex:1;min-width:0;}
+.cb-name{font-size:13px;font-weight:700;}
+.cb-ctx{font-size:11px;color:var(--muted);margin-top:2px;}
+.cb-call{padding:5px 10px;border-radius:8px;border:none;background:var(--blue-l);color:var(--blue);font-family:var(--font);font-size:11px;font-weight:700;cursor:pointer;margin-right:4px;flex-shrink:0;}
+.cb-done{padding:5px 10px;border-radius:8px;border:none;background:var(--green-l);color:var(--green);font-family:var(--font);font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0;}
+
+/* EMAIL */
+.em{padding:12px 14px;border-bottom:1px solid var(--line);animation:fu .25s ease both;}
+.em:last-child{border-bottom:none;}
+.em-row{display:flex;justify-content:space-between;align-items:flex-start;gap:6px;}
+.em-from{font-size:13px;font-weight:700;}
+.em-time{font-size:10px;color:var(--muted);flex-shrink:0;}
+.em-subj{font-size:12px;color:var(--ink2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.em-prev{font-size:11px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.em-acts{display:flex;gap:6px;margin-top:7px;flex-wrap:wrap;align-items:center;}
+.em-act{padding:5px 10px;border-radius:8px;border:1.5px solid var(--line);background:transparent;font-family:var(--font);font-size:11px;font-weight:700;cursor:pointer;}
+.em-act.b{color:var(--blue);border-color:var(--blue-l);}
+.em-act.g{color:var(--green);border-color:var(--green-l);}
+
+/* FLIGHT */
+.flight{padding:14px;border-bottom:1px solid var(--line);animation:fu .25s ease both;}
+.flight:last-child{border-bottom:none;}
+.flight-row{display:flex;align-items:center;gap:10px;}
+.flight-icon{width:36px;height:36px;border-radius:10px;background:var(--ink);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.flight-icon svg{width:18px;height:18px;fill:none;stroke:white;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;}
+.flight-body{flex:1;min-width:0;}
+.flight-route{font-size:14px;font-weight:700;color:var(--ink);}
+.flight-num{font-size:11px;color:var(--muted);margin-top:1px;}
+.flight-times{display:flex;align-items:center;gap:8px;margin-top:7px;}
+.flight-dep,.flight-arr{text-align:center;}
+.flight-t{font-size:15px;font-weight:700;color:var(--ink);line-height:1;}
+.flight-ap{font-size:10px;color:var(--muted);margin-top:2px;}
+.flight-mid{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;}
+.flight-dur{font-size:10px;color:var(--muted);}
+.flight-line{width:100%;height:1px;background:var(--line);position:relative;}
+.flight-line::after{content:'';position:absolute;right:-4px;top:-4px;width:8px;height:8px;background:var(--teal);border-radius:50%;}
+.flight-badges{display:flex;gap:5px;margin-top:8px;flex-wrap:wrap;}
+.flight-del{background:none;border:none;cursor:pointer;padding:2px;flex-shrink:0;align-self:flex-start;}
+.flight-del svg{width:15px;height:15px;fill:none;stroke:var(--muted);stroke-width:2;stroke-linecap:round;}
+
+/* REMINDER */
+.rem{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line);animation:fu .25s ease both;}
+.rem:last-child{border-bottom:none;}
+.rem-ic{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.rem-ic svg{width:16px;height:16px;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+.rem-bd{flex:1;}
+.rem-title{font-size:13px;font-weight:600;}
+.rem-time{font-size:11px;color:var(--muted);margin-top:2px;}
+.rem-del{background:none;border:none;cursor:pointer;}
+.rem-del svg{width:15px;height:15px;fill:none;stroke:var(--muted);stroke-width:2;stroke-linecap:round;}
+
+/* PROGRESS */
+.prog-wrap{padding:0 14px 12px;}
+.prog-labels{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:8px;}
+.prog-bar{height:3px;background:var(--line);border-radius:2px;overflow:hidden;margin-top:5px;}
+.prog-fill{height:100%;background:var(--green);border-radius:2px;transition:width .5s ease;}
+
+/* ADD BAR */
+.add-bar{display:flex;gap:8px;margin-top:10px;align-items:center;}
+.add-in{flex:1;background:var(--white);border:1.5px solid var(--line);border-radius:12px;padding:11px 13px;font-family:var(--font);font-size:14px;color:var(--ink);outline:none;transition:border-color .2s;}
+.add-in:focus{border-color:var(--blue);}
+.add-in::placeholder{color:var(--muted);}
+.add-btn{width:42px;height:42px;border-radius:12px;border:none;background:var(--ink);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.add-btn svg{width:20px;height:20px;fill:none;stroke:white;stroke-width:2.5;stroke-linecap:round;}
+
+/* PASTE */
+.paste-area{width:100%;background:var(--white);border:1.5px solid var(--line);border-radius:var(--r);padding:12px 14px;font-family:var(--font);font-size:12px;color:var(--ink);resize:none;height:120px;outline:none;transition:border-color .2s;line-height:1.5;margin-top:10px;}
+.paste-area:focus{border-color:var(--blue);}
+.paste-area::placeholder{color:var(--muted);}
+.parse-btn{width:100%;margin-top:8px;padding:13px;border-radius:12px;border:none;background:var(--ink);color:white;font-family:var(--font);font-size:14px;font-weight:700;cursor:pointer;}
+
+/* GUIDE */
+.guide-step{background:var(--white);border-radius:var(--r);padding:16px;margin-bottom:10px;box-shadow:var(--shadow);border-left:3px solid var(--ink);}
+.guide-step.ms{border-left-color:var(--blue);}
+.guide-step.gm{border-left-color:var(--green);}
+.guide-step.wa{border-left-color:#25D366;}
+.guide-step.pwa{border-left-color:var(--purple);}
+.guide-num{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.guide-badge{width:26px;height:26px;border-radius:50%;background:var(--ink);color:white;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.guide-badge.ms{background:var(--blue);}
+.guide-badge.gm{background:var(--green);}
+.guide-badge.wa{background:#25D366;}
+.guide-badge.pwa{background:var(--purple);}
+.guide-title{font-size:14px;font-weight:700;color:var(--ink);}
+.guide-body{font-size:12px;color:var(--ink2);line-height:1.7;}
+.guide-body strong{color:var(--ink);font-weight:700;}
+.guide-body a{color:var(--blue);}
+.guide-note{margin-top:10px;background:var(--blue-l);border-radius:8px;padding:8px 12px;font-size:11px;color:var(--blue);line-height:1.5;}
+.guide-note.amber{background:var(--amber-l);color:var(--amber);}
+.guide-note.green{background:var(--green-l);color:var(--green);}
+
+/* VOICE OVERLAY */
+.vov{position:fixed;bottom:24px;left:16px;right:calc(var(--nav)+16px);
+  background:var(--ink);color:white;border-radius:var(--r);padding:13px 15px;font-size:13px;
+  line-height:1.5;z-index:49;display:none;animation:fu .2s ease;box-shadow:0 8px 28px rgba(0,0,0,.2);}
+.vov.show{display:block;}
+.vov-hint{font-size:10px;color:rgba(255,255,255,.4);margin-top:5px;}
+
+/* OVERLAY / SHEET */
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;z-index:100;opacity:0;pointer-events:none;transition:opacity .25s;backdrop-filter:blur(4px);}
+.ov.open{opacity:1;pointer-events:all;}
+.sht{background:var(--bg);border-radius:22px 22px 0 0;padding:0 22px calc(env(safe-area-inset-bottom,34px)+22px);width:100%;max-height:88dvh;overflow-y:auto;transform:translateY(100%);transition:transform .3s cubic-bezier(.32,.72,0,1);}
+.ov.open .sht{transform:translateY(0);}
+.sht-h{width:34px;height:4px;background:var(--line);border-radius:2px;margin:13px auto 18px;}
+.sht h3{font-size:17px;font-weight:700;margin-bottom:14px;}
+.sin{width:100%;background:var(--white);border:1.5px solid var(--line);border-radius:12px;padding:12px 13px;font-family:var(--font);font-size:14px;color:var(--ink);outline:none;margin-bottom:9px;transition:border-color .2s;}
+.sin:focus{border-color:var(--blue);}
+.sin::placeholder{color:var(--muted);}
+.srow{display:flex;gap:8px;margin-bottom:9px;}
+.srow .sin{margin-bottom:0;}
+.sbtn{width:100%;padding:14px;border-radius:12px;border:none;font-family:var(--font);font-size:14px;font-weight:700;cursor:pointer;margin-top:3px;}
+.sbtn.p{background:var(--ink);color:white;}
+.sbtn.s{background:var(--line);color:var(--ink2);margin-top:8px;}
+.sbtn:active{opacity:.82;}
+.ai-row{background:var(--blue-l);border-radius:10px;padding:9px 12px;margin-bottom:9px;display:flex;justify-content:space-between;align-items:center;}
+.ai-txt{font-size:12px;color:var(--blue);}
+.ai-use{font-size:11px;font-weight:700;color:var(--blue);background:none;border:none;font-family:var(--font);cursor:pointer;text-decoration:underline;}
+
+/* SETUP SHEET */
+.setup-blk{background:var(--white);border-radius:var(--r);padding:14px;margin-bottom:10px;box-shadow:var(--shadow);}
+.sbt{font-size:13px;font-weight:700;margin-bottom:3px;}
+.sbd{font-size:11px;color:var(--muted);line-height:1.5;margin-bottom:9px;}
+.sbd a{color:var(--blue);}
+.s-in{width:100%;background:var(--bg);border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;font-family:var(--font);font-size:12px;color:var(--ink);outline:none;margin-bottom:7px;transition:border-color .2s;}
+.s-in:focus{border-color:var(--blue);}
+.s-in::placeholder{color:var(--muted);}
+.ms-btn{width:100%;padding:11px;border-radius:10px;border:none;font-family:var(--font);font-size:13px;font-weight:700;cursor:pointer;background:#0078D4;color:white;}
+
+/* EMPTY */
+.empty{text-align:center;padding:26px 14px;color:var(--muted);font-size:12px;line-height:1.6;}
+.empty strong{display:block;font-size:14px;color:var(--ink2);margin-bottom:5px;font-weight:700;}
+
+/* OFFLINE BANNER */
+.offline-bar{display:none;position:fixed;top:0;left:0;right:calc(var(--nav));background:var(--amber);color:white;text-align:center;font-size:11px;font-weight:700;padding:6px 16px;letter-spacing:.04em;z-index:200;}
+.offline-bar.show{display:block;}
+
+/* TIME KEEPER */
+.tk-entry{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line);animation:fu .25s ease both;}
+.tk-entry:last-child{border-bottom:none;}
+.tk-dot{width:10px;height:10px;border-radius:50%;background:var(--green);flex-shrink:0;}
+.tk-dot.running{background:var(--red);animation:pulse2 1s ease infinite;}
+@keyframes pulse2{0%,100%{opacity:1;}50%{opacity:.4;}}
+.tk-body{flex:1;min-width:0;}
+.tk-proj{font-size:13px;font-weight:700;color:var(--ink);}
+.tk-meta{font-size:11px;color:var(--muted);margin-top:2px;}
+.tk-dur{font-family:var(--font);font-size:13px;font-weight:700;color:var(--ink);flex-shrink:0;min-width:56px;text-align:right;}
+.tk-cat{font-size:9px;font-weight:700;padding:2px 7px;border-radius:20px;text-transform:uppercase;margin-left:6px;}
+.tk-billed{background:var(--green-l);color:var(--green);}
+.tk-unbilled{background:var(--red-l);color:var(--red);}
+.tk-meeting{background:var(--blue-l);color:var(--blue);}
+.tk-travel{background:var(--amber-l);color:var(--amber);}
+.tk-production{background:var(--purple-l);color:var(--purple);}
+.tk-del{background:none;border:none;cursor:pointer;padding:2px;flex-shrink:0;}
+.tk-del svg{width:14px;height:14px;fill:none;stroke:var(--muted);stroke-width:2;stroke-linecap:round;}
+
+/* TIMER DISPLAY */
+.timer-hero{background:var(--ink);border-radius:var(--r);padding:16px;margin-bottom:12px;text-align:center;color:white;}
+.timer-digits{font-family:var(--font);font-size:38px;font-weight:700;letter-spacing:-1px;line-height:1;color:white;}
+.timer-digits.running{color:var(--amber);}
+.timer-proj-lbl{font-size:9px;color:rgba(255,255,255,.4);margin-top:4px;letter-spacing:.1em;text-transform:uppercase;}
+.timer-proj-name{font-size:13px;font-weight:600;color:rgba(255,255,255,.88);margin-top:2px;}
+.tk-start-btn{width:100%;padding:13px;border-radius:12px;border:none;background:var(--green);color:white;font-family:var(--font);font-size:13px;font-weight:700;cursor:pointer;margin-top:4px;display:flex;align-items:center;justify-content:center;gap:6px;}
+.tk-stop-btn{width:100%;padding:13px;border-radius:12px;border:none;background:var(--red);color:white;font-family:var(--font);font-size:13px;font-weight:700;cursor:pointer;margin-top:4px;display:flex;align-items:center;justify-content:center;gap:6px;}
+.tk-proj-row{display:flex;gap:8px;margin-bottom:10px;}
+.tk-proj-in{flex:1;background:var(--white);border:1.5px solid var(--line);border-radius:12px;padding:11px 13px;font-family:var(--font);font-size:13px;color:var(--ink);outline:none;transition:border-color .2s;}
+.tk-proj-in:focus{border-color:var(--green);}
+.tk-proj-in::placeholder{color:var(--muted);}
+
+/* ODOMETER */
+.odo-entry{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line);animation:fu .25s ease both;}
+.odo-entry:last-child{border-bottom:none;}
+.odo-icon{width:34px;height:34px;border-radius:10px;background:var(--ink);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.odo-icon svg{width:16px;height:16px;fill:none;stroke:white;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;}
+.odo-body{flex:1;min-width:0;}
+.odo-vehicle{font-size:13px;font-weight:700;color:var(--ink);}
+.odo-meta{font-size:11px;color:var(--muted);margin-top:2px;}
+.odo-km{font-size:14px;font-weight:700;color:var(--blue);flex-shrink:0;text-align:right;}
+.odo-km span{display:block;font-size:9px;font-weight:600;color:var(--muted);text-align:right;}
+.odo-del{background:none;border:none;cursor:pointer;padding:2px;flex-shrink:0;}
+.odo-del svg{width:14px;height:14px;fill:none;stroke:var(--muted);stroke-width:2;stroke-linecap:round;}
+
+/* EXPORT BAR */
+.export-bar{background:var(--white);border-radius:var(--r);padding:14px;box-shadow:var(--shadow);margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.export-info{font-size:12px;color:var(--ink2);}
+.export-info strong{display:block;font-size:13px;font-weight:700;color:var(--ink);margin-bottom:2px;}
+.export-btn{padding:10px 16px;border-radius:10px;border:none;background:var(--ink);color:white;font-family:var(--font);font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0;display:flex;align-items:center;gap:6px;}
+.export-btn svg{width:14px;height:14px;fill:none;stroke:white;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+
+/* SPINNER */
+.spin{display:inline-block;width:12px;height:12px;border:2px solid rgba(255,255,255,.3);border-top-color:white;border-radius:50%;animation:rot .65s linear infinite;vertical-align:middle;}
+.spin.d{border-color:rgba(0,0,0,.1);border-top-color:var(--ink);}
+@keyframes rot{to{transform:rotate(360deg);}}
+@keyframes fu{from{opacity:0;transform:translateY(5px);}to{opacity:1;transform:translateY(0);}}
+</style>
+</head>
+<body>
+
+<!-- ══ RIGHT RAIL — all controls here ══ -->
+<nav class="rail">
+
+  <!-- TOP: Settings + Refresh -->
+  <button class="rail-util" id="setup-open">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+  </button>
+  <button class="rail-util" id="refresh-btn">
+    <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+  </button>
+
+  <div class="rail-div"></div>
+
+  <!-- NAV TABS -->
+  <button class="rail-btn active" data-tab="today">
+    <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+    Today
+  </button>
+  <button class="rail-btn" data-tab="tasks">
+    <svg viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+    Tasks
+  </button>
+  <button class="rail-btn" data-tab="callbacks">
+    <svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/><polyline points="17 2 21 2 21 6"/><line x1="21" y1="2" x2="16" y2="7"/></svg>
+    Calls
+  </button>
+  <button class="rail-btn" data-tab="emails">
+    <svg viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+    Emails
+  </button>
+  <button class="rail-btn" data-tab="flights">
+    <svg viewBox="0 0 24 24"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 00-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>
+    Flights
+  </button>
+  <button class="rail-btn" data-tab="reminders">
+    <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+    Alerts
+  </button>
+  <button class="rail-btn" data-tab="timekeep">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    Time
+  </button>
+  <button class="rail-btn" data-tab="odometer">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l2.5 2.5"/><path d="M16.5 5.5l1 1"/><path d="M5.5 5.5l-1 1"/><path d="M5 12H3"/><path d="M21 12h-2"/></svg>
+    Odo
+  </button>
+
+  <div class="rail-spacer"></div>
+
+  <!-- MIC at very bottom -->
+  <button class="rail-mic" id="vfab">
+    <svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+  </button>
+
+</nav>
+
+<!-- ══ MAIN CONTENT ══ -->
+<div class="main">
+
+  <div class="hdr">
+    <div class="dt" id="hdr-date"></div>
+    <div class="greet" id="hdr-greet">Good Morning</div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="sval b" id="s-tasks">0</div><div class="slbl">Tasks</div></div>
+    <div class="stat"><div class="sval g" id="s-done">0</div><div class="slbl">Done</div></div>
+    <div class="stat"><div class="sval r" id="s-calls">0</div><div class="slbl">Callbacks</div></div>
+    <div class="stat"><div class="sval a" id="s-mtgs">0</div><div class="slbl">Meetings</div></div>
+  </div>
+
+  <!-- TODAY -->
+  <div class="panel active" id="panel-today">
+    <div class="brief">
+      <div class="brief-lbl">✦ AI Daily Briefing</div>
+      <div class="brief-txt" id="brief-txt">Tap below to generate your personalised briefing for today.</div>
+      <button class="brief-btn" id="brief-btn">Generate My Day</button>
+    </div>
+    <div class="sh2"><span class="st">Schedule</span><button class="sa" id="add-ev-btn">+ Event</button></div>
+    <div class="card" id="ev-list"><div class="empty"><strong>No events yet</strong>Connect Outlook in Setup or add manually.</div></div>
+  </div>
+
+  <!-- TASKS -->
+  <div class="panel" id="panel-tasks">
+    <div class="sh2"><span class="st">To-Do</span><button class="sa" id="clear-done">Clear done</button></div>
+    <div class="card" id="todo-list"><div class="empty"><strong>All clear</strong>Add a task below or tap the mic.</div></div>
+    <div class="card" id="prog-card" style="display:none;">
+      <div class="prog-wrap">
+        <div class="prog-labels"><span id="prog-txt">0 of 0</span><span id="prog-pct">0%</span></div>
+        <div class="prog-bar"><div class="prog-fill" id="prog-fill" style="width:0%"></div></div>
+      </div>
+    </div>
+    <div class="add-bar">
+      <input class="add-in" id="task-in" type="text" placeholder="Add a task…" maxlength="80">
+      <button class="add-btn" id="task-add"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+    </div>
+  </div>
+
+  <!-- CALLBACKS -->
+  <div class="panel" id="panel-callbacks">
+    <div class="sh2"><span class="st">Call Back Later</span></div>
+    <div class="card" id="cb-list"><div class="empty"><strong>No callbacks pending</strong>Paste SMS below or say "I need to call [name] back".</div></div>
+    <div class="sh2" style="margin-top:10px;"><span class="st">Paste iMessage / SMS</span></div>
+    <textarea class="paste-area" id="sms-area" placeholder="Paste your SMS or iMessage thread here. AI will find missed calls and 'call back later' messages…"></textarea>
+    <button class="parse-btn" id="sms-parse">✦ Extract Callbacks</button>
+  </div>
+
+  <!-- EMAILS -->
+  <div class="panel" id="panel-emails">
+    <div class="sh2"><span class="st">Appointment Emails</span><button class="sa" id="fetch-emails">Fetch</button></div>
+    <div class="card" id="em-list"><div class="empty"><strong>No emails loaded</strong>Connect Outlook in Setup then tap Fetch.</div></div>
+  </div>
+
+  <!-- FLIGHTS -->
+  <div class="panel" id="panel-flights">
+    <div class="sh2"><span class="st">Flight Itinerary</span></div>
+    <div class="card" id="flight-list"><div class="empty"><strong>No flights added</strong>Paste your flight confirmation below.</div></div>
+    <div class="sh2" style="margin-top:10px;"><span class="st">Paste Flight Data</span></div>
+    <textarea class="paste-area" id="flight-area" placeholder="Paste your flight confirmation email, booking details, or itinerary text here…"></textarea>
+    <button class="parse-btn" id="flight-parse">✦ Extract Flights</button>
+  </div>
+
+  <!-- REMINDERS -->
+  <div class="panel" id="panel-reminders">
+    <div class="sh2"><span class="st">Reminders &amp; Alerts</span><button class="sa" id="add-rem-btn">+ Add</button></div>
+    <div class="card" id="rem-list"><div class="empty"><strong>No reminders</strong>Add one or say "Remind me to…"</div></div>
+  </div>
+
+  <!-- GUIDE -->
+  <div class="panel" id="panel-guide">
+    <div class="sh2"><span class="st">Setup Guide</span></div>
+
+    <!-- IS THIS A STANDALONE APP? -->
+    <div class="guide-step pwa">
+      <div class="guide-num"><div class="guide-badge pwa">?</div><div class="guide-title">Is this a standalone app or web-based?</div></div>
+      <div class="guide-body">
+        This is a <strong>Progressive Web App (PWA)</strong> — a web page that behaves like a native app when saved to your iPhone home screen. It is <strong>not</strong> downloaded from the App Store.<br><br>
+        <strong>What it IS:</strong> A full-screen app that lives on your home screen, works offline for stored data, fires notifications, and remembers everything in your iPhone's local storage.<br><br>
+        <strong>What it is NOT:</strong> It does not replace your lock screen. Your lock screen is controlled by iOS and cannot be replaced by a third-party app without jailbreaking. This app opens when you tap its icon, just like any other app.
+      </div>
+      <div class="guide-note green">✅ It looks and feels like a native app. No browser chrome, full screen, home screen icon.</div>
+    </div>
+
+    <!-- STEP 1: ADD TO HOME SCREEN -->
+    <div class="guide-step pwa">
+      <div class="guide-num"><div class="guide-badge pwa">1</div><div class="guide-title">Add to iPhone Home Screen</div></div>
+      <div class="guide-body">
+        1. Open this file in <strong>Safari</strong> (not Chrome — must be Safari)<br>
+        2. Tap the <strong>Share</strong> button (box with arrow pointing up)<br>
+        3. Scroll down and tap <strong>Add to Home Screen</strong><br>
+        4. Name it <strong>Day</strong> and tap <strong>Add</strong><br>
+        5. Find the icon on your home screen and open it<br><br>
+        From now on it opens full-screen with no browser bar.
+      </div>
+      <div class="guide-note amber">⚠️ Must be opened in Safari. Chrome on iPhone cannot add PWAs to the home screen.</div>
+    </div>
+
+    <!-- STEP 2: MICROSOFT 365 -->
+    <div class="guide-step ms">
+      <div class="guide-num"><div class="guide-badge ms">2</div><div class="guide-title">Connect Microsoft 365 (Outlook Calendar + Email)</div></div>
+      <div class="guide-body">
+        <strong>Register your app in Azure (one-time, ~5 minutes):</strong><br>
+        1. Go to <a href="https://portal.azure.com" target="_blank">portal.azure.com</a> and sign in with your work account<br>
+        2. Search for <strong>App registrations</strong> → click <strong>New registration</strong><br>
+        3. Name: anything (e.g. "My Day Planner")<br>
+        4. Supported account types: <strong>Accounts in any organisational directory and personal Microsoft accounts</strong><br>
+        5. Redirect URI: choose <strong>Single-page application (SPA)</strong> → enter <strong>https://localhost</strong><br>
+        6. Click <strong>Register</strong><br>
+        7. Copy the <strong>Application (client) ID</strong> — paste it in ⚙ Setup<br>
+        8. Go to <strong>API permissions → Add a permission → Microsoft Graph → Delegated</strong><br>
+        9. Add: <strong>Calendars.Read</strong>, <strong>Mail.Read</strong>, <strong>User.Read</strong><br>
+        10. Click <strong>Grant admin consent</strong> (or ask your IT admin)<br><br>
+        Then in this app: tap ⚙ → paste Client ID → tap <strong>Sign in with Microsoft</strong>.<br>
+        You'll sign in once and stay connected.
+      </div>
+      <div class="guide-note">💡 Your IT admin may need to approve the consent step. Send them the app registration link and ask them to grant tenant-wide consent.</div>
+    </div>
+
+    <!-- STEP 4: WHATSAPP -->
+    <div class="guide-step wa">
+      <div class="guide-num"><div class="guide-badge wa">4</div><div class="guide-title">WhatsApp / SMS — Callbacks &amp; Messages</div></div>
+      <div class="guide-body">
+        WhatsApp and iMessage do not allow third-party apps to read your messages directly — this is an iOS and WhatsApp security restriction that cannot be bypassed.<br><br>
+        <strong>For WhatsApp:</strong><br>
+        1. Open the chat in WhatsApp<br>
+        2. Tap the contact name at the top<br>
+        3. Scroll down → <strong>Export Chat</strong> → <strong>Without Media</strong><br>
+        4. Copy all the text and paste it into the Callbacks tab<br><br>
+        <strong>For iMessage / SMS:</strong><br>
+        1. Long-press any message → <strong>Copy</strong><br>
+        2. Or select multiple messages and copy the thread<br>
+        3. Paste into the Callbacks tab — AI will extract missed calls and callback commitments<br><br>
+        <strong>Voice shortcut:</strong> While using the app, tap the mic and say <em>"I need to call [name] back"</em> — it logs instantly without pasting anything.
+      </div>
+      <div class="guide-note amber">⚠️ Apple and WhatsApp intentionally prevent any app from reading your private messages. Paste is the only safe, approved method.</div>
+    </div>
+
+    <!-- STEP 5: NOTIFICATIONS / ALARM -->
+    <div class="guide-step">
+      <div class="guide-num"><div class="guide-badge">5</div><div class="guide-title">Notifications, Alarms &amp; Morning Routine</div></div>
+      <div class="guide-body">
+        <strong>Allow notifications:</strong> When you first open the app it asks for notification permission — tap <strong>Allow</strong>. This enables meeting alerts and leave-time reminders.<br><br>
+        <strong>Link to your morning alarm (Apple Shortcuts):</strong><br>
+        1. Open the <strong>Shortcuts</strong> app on your iPhone<br>
+        2. Tap <strong>Automation → New Automation</strong><br>
+        3. Choose <strong>Alarm</strong> → select your morning alarm<br>
+        4. Add action: <strong>Open App</strong> → choose <strong>Day</strong> (this app)<br>
+        5. Turn off "Ask Before Running"<br>
+        6. Tap Done<br><br>
+        Now when your alarm goes off, this app opens automatically so your day is ready before you even get out of bed.
+      </div>
+      <div class="guide-note green">✅ Combine with "Generate My Day" to get your AI briefing the moment your alarm fires.</div>
+    </div>
+
+    <!-- DOES IT REPLACE LOCK SCREEN? -->
+    <div class="guide-step">
+      <div class="guide-num"><div class="guide-badge">6</div><div class="guide-title">Does this replace my lock screen?</div></div>
+      <div class="guide-body">
+        <strong>No</strong> — and this is intentional. Apple does not allow any app to replace the iOS lock screen. The lock screen is a core security feature controlled entirely by Apple.<br><br>
+        <strong>What you can do instead:</strong><br>
+        • Add a <strong>Lock Screen widget</strong> in iOS (Settings → Wallpaper → Customise Lock Screen → Widgets) showing your calendar or reminders<br>
+        • Set this app to open <strong>automatically when your alarm fires</strong> using Shortcuts (see Step 5)<br>
+        • Add a <strong>Dynamic Island or notification</strong> that shows your next meeting<br><br>
+        This means your lock screen stays secure while this app opens instantly the moment you pick up your phone.
+      </div>
+      <div class="guide-note amber">⚠️ Any app claiming to "replace" the iOS lock screen requires jailbreaking, which voids your warranty and creates security risks.</div>
+    </div>
+
+  </div><!-- /guide panel -->
+
+  <!-- TIME KEEPER -->
+  <div class="panel" id="panel-timekeep">
+
+    <!-- offline-friendly notice -->
+    <div class="timer-hero">
+      <div class="timer-digits" id="tk-display">00:00:00</div>
+      <div class="timer-proj-lbl">Current Project</div>
+      <div class="timer-proj-name" id="tk-running-name">—</div>
+    </div>
+
+    <div class="tk-proj-row">
+      <input class="tk-proj-in" id="tk-proj" type="text" placeholder="Project number or name…" maxlength="40">
+    </div>
+    <button class="tk-start-btn" id="tk-start-btn">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:6px;"><polygon points="5 3 19 12 5 21 5 3" fill="white" stroke="none"/></svg>
+      Start Timer
+    </button>
+
+    <div class="sh2" style="margin-top:16px;"><span class="st">Log</span><button class="sa" id="tk-clear-done">Clear all</button></div>
+    <div class="card" id="tk-list"><div class="empty"><strong>No entries yet</strong>Enter a project and start the timer.</div></div>
+
+    <div class="export-bar" style="margin-top:4px;">
+      <div class="export-info"><strong>Export Timekeeping</strong>Download as CSV for Excel</div>
+      <button class="export-btn" id="tk-export-btn">
+        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Export CSV
+      </button>
+    </div>
+  </div>
+
+  <!-- ODOMETER -->
+  <div class="panel" id="panel-odometer">
+
+    <div class="export-bar">
+      <div class="export-info"><strong>Export All Logs</strong>Time + Odometer combined CSV</div>
+      <button class="export-btn" id="all-export-btn">
+        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Export All
+      </button>
+    </div>
+
+    <div class="sh2"><span class="st">Trip Log</span><button class="sa" id="add-odo-btn">+ Trip</button></div>
+    <div class="card" id="odo-list"><div class="empty"><strong>No trips logged</strong>Tap + Trip to add an odometer entry.</div></div>
+  </div>
+
+</div><!-- /main -->
+
+<!-- OFFLINE BANNER -->
+<div class="offline-bar" id="offline-bar">⚠ You are offline — stored data available, AI features paused</div>
+
+<!-- VOICE RESULT -->
+<div class="vov" id="vov">
+  <div id="vov-txt">Listening…</div>
+  <div class="vov-hint">Say: "Add task…" · "Remind me to… at 3pm" · "I need to call Sarah back"</div>
+</div>
+
+<!-- TASK SHEET -->
+<div class="ov" id="task-ov">
+  <div class="sht">
+    <div class="sht-h"></div>
+    <h3 id="ts-title">New Task</h3>
+    <input class="sin" id="ts-name" type="text" placeholder="Task name…">
+    <div class="ai-row" id="ai-row" style="display:none;"><span class="ai-txt" id="ai-txt">✦ AI suggests…</span><button class="ai-use" id="ai-use">Use this</button></div>
+    <div class="srow">
+      <input class="sin" id="ts-mins" type="number" placeholder="Minutes" min="5" max="480">
+      <select class="sin" id="ts-prio"><option value="normal">Normal</option><option value="high">High priority</option><option value="low">Low priority</option></select>
+    </div>
+    <input class="sin" id="ts-time" type="time">
+    <button class="sbtn p" id="ts-save">Add Task</button>
+    <button class="sbtn s" id="ts-cancel">Cancel</button>
+  </div>
+</div>
+
+<!-- EVENT SHEET -->
+<div class="ov" id="ev-ov">
+  <div class="sht">
+    <div class="sht-h"></div>
+    <h3>Add Event</h3>
+    <input class="sin" id="es-name" type="text" placeholder="Event title…">
+    <div class="srow"><input class="sin" id="es-start" type="time"><input class="sin" id="es-end" type="time"></div>
+    <input class="sin" id="es-loc" type="text" placeholder="Location (optional — AI estimates travel time)…">
+    <button class="sbtn p" id="es-save">Add Event</button>
+    <button class="sbtn s" id="es-cancel">Cancel</button>
+  </div>
+</div>
+
+<!-- REMINDER SHEET -->
+<div class="ov" id="rem-ov">
+  <div class="sht">
+    <div class="sht-h"></div>
+    <h3>New Reminder</h3>
+    <input class="sin" id="rs-name" type="text" placeholder="Remind me to…">
+    <input class="sin" id="rs-time" type="time">
+    <button class="sbtn p" id="rs-save">Set Reminder</button>
+    <button class="sbtn s" id="rs-cancel">Cancel</button>
+  </div>
+</div>
+
+<!-- SETUP SHEET -->
+<div class="ov" id="setup-ov">
+  <div class="sht">
+    <div class="sht-h"></div>
+    <h3>Setup</h3>
+    <div class="setup-blk">
+      <div class="sbt">Microsoft 365 (Outlook)</div>
+      <div class="sbd">Paste your Azure Application (Client) ID below. See the Guide tab for full instructions.</div>
+      <input class="s-in" id="cfg-cid" placeholder="Azure Client ID…">
+      <button class="ms-btn" id="ms-btn">Sign in with Microsoft</button>
+    </div>
+    <div class="setup-blk">
+      <div class="sbt">Home / Office location</div>
+      <div class="sbd">Your usual starting point for travel time estimates.</div>
+      <input class="s-in" id="cfg-loc" placeholder="e.g. Sandton, Johannesburg">
+    </div>
+    <div class="setup-blk">
+      <div class="sbt">Meeting alert lead time (minutes)</div>
+      <div class="sbd">How many minutes before a meeting to send a pre-meeting notification.</div>
+      <input class="s-in" id="cfg-lead" type="number" placeholder="e.g. 15" min="5" max="120">
+    </div>
+    <div class="setup-blk" style="border-left:3px solid var(--purple);cursor:pointer;" id="open-guide-from-setup">
+      <div class="sbt" style="display:flex;align-items:center;gap:8px;">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="var(--purple)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        Setup Guide &amp; Instructions
+      </div>
+      <div class="sbd" style="margin-bottom:0;">Step-by-step instructions for connecting Outlook, WhatsApp and adding to your home screen. Tap to open.</div>
+    </div>
+    <button class="sbtn p" id="cfg-save">Save &amp; Close</button>
+  </div>
+</div>
+
+<!-- ODOMETER SHEET -->
+<div class="ov" id="odo-ov">
+  <div class="sht">
+    <div class="sht-h"></div>
+    <h3 id="odo-sheet-title">New Trip</h3>
+    <input class="sin" id="odo-vehicle" type="text" placeholder="Vehicle name or registration…">
+    <div class="srow">
+      <input class="sin" id="odo-start" type="number" placeholder="KM Start" min="0">
+      <input class="sin" id="odo-finish" type="number" placeholder="KM Finish" min="0">
+    </div>
+    <input class="sin" id="odo-date" type="date">
+    <input class="sin" id="odo-purpose" type="text" placeholder="Purpose (optional)…">
+    <button class="sbtn p" id="odo-save">Save Trip</button>
+    <button class="sbtn s" id="odo-cancel">Cancel</button>
+  </div>
+</div>
+
+<!-- TIME EDIT SHEET -->
+<div class="ov" id="tk-edit-ov">
+  <div class="sht">
+    <div class="sht-h"></div>
+    <h3>Edit Entry</h3>
+    <select class="sin" id="tke-cat">
+      <option value="billed">Billed</option>
+      <option value="unbilled">Not Billed</option>
+      <option value="meeting">Meeting</option>
+      <option value="travel">Travel</option>
+      <option value="production">Production</option>
+    </select>
+    <input class="sin" id="tke-proj" type="text" placeholder="Project number…">
+    <input class="sin" id="tke-note" type="text" placeholder="Note (optional)…">
+    <button class="sbtn p" id="tke-save">Save</button>
+    <button class="sbtn s" id="tke-cancel">Cancel</button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-authentication-library/2.38.3/msal-browser.min.js"></script>
+<script>
+const S={
+  tasks:      JSON.parse(localStorage.getItem('dp5_tasks')||'[]'),
+  events:     JSON.parse(localStorage.getItem('dp5_events')||'[]'),
+  callbacks:  JSON.parse(localStorage.getItem('dp5_cbs')||'[]'),
+  emails:     JSON.parse(localStorage.getItem('dp5_emails')||'[]'),
+  flights:    JSON.parse(localStorage.getItem('dp5_flights')||'[]'),
+  reminders:  JSON.parse(localStorage.getItem('dp5_rems')||'[]'),
+  timeEntries:JSON.parse(localStorage.getItem('dp5_time')||'[]'),
+  odoEntries: JSON.parse(localStorage.getItem('dp5_odo')||'[]'),
+  clientId:   localStorage.getItem('dp5_cid')||'',
+  homeBase:   localStorage.getItem('dp5_loc')||'',
+  leadMins:   parseInt(localStorage.getItem('dp5_lead')||'15'),
+  msAccount:null,msalInst:null,
+};
+function save(){
+  const map={tasks:'tasks',events:'events',callbacks:'cbs',emails:'emails',flights:'flights',reminders:'rems',timeEntries:'time',odoEntries:'odo'};
+  Object.keys(map).forEach(k=>localStorage.setItem('dp5_'+map[k],JSON.stringify(S[k])));
+  localStorage.setItem('dp5_cid',S.clientId);
+  localStorage.setItem('dp5_loc',S.homeBase);
+  localStorage.setItem('dp5_lead',S.leadMins);
+}
+const $=id=>document.getElementById(id);
+const openOv=id=>$(id).classList.add('open');
+const closeOv=id=>$(id).classList.remove('open');
+document.querySelectorAll('.ov').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');}));
+
+(()=>{
+  const h=new Date().getHours();
+  $('hdr-greet').textContent='Good '+(h<12?'Morning':h<17?'Afternoon':'Evening');
+  $('hdr-date').textContent=new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
+})();
+
+document.querySelectorAll('.rail-btn').forEach(b=>b.addEventListener('click',()=>{
+  const t=b.dataset.tab;
+  document.querySelectorAll('.rail-btn').forEach(x=>x.classList.toggle('active',x.dataset.tab===t));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id==='panel-'+t));
+}));
+
+// ═══════════════════════════════════════
+// TRAVEL TIME — AI ESTIMATE ONLY
+// ═══════════════════════════════════════
+async function getTravelTime(destination){
+  if(!destination||!S.homeBase)return null;
+  try{
+    const t=await ai(`Driving minutes from "${S.homeBase}" to "${destination}" in typical traffic. ONLY reply with a number.`);
+    return parseInt(t)||20;
+  }catch{return 20;}
+}
+
+async function ai(prompt){
+  const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:prompt}]})});
+  const d=await r.json();return d.content?.[0]?.text||'';
+}
+
+function notif(title,timeStr){
+  if(!timeStr||!('Notification' in window))return;
+  Notification.requestPermission().then(p=>{
+    if(p!=='granted')return;
+    const[h,m]=timeStr.split(':').map(Number);
+    const now=new Date(),target=new Date(now.getFullYear(),now.getMonth(),now.getDate(),h,m,0);
+    const delay=target-now;
+    if(delay>0)setTimeout(()=>new Notification('Day Planner',{body:title}),delay);
+  });
+}
+
+function calcLeaveTime(startTime,travelMins){
+  if(!startTime||!travelMins)return{leaveAt:'',preMtgAlert:''};
+  const[sh,sm]=startTime.split(':').map(Number);
+  const lm=sh*60+sm-travelMins,am=sh*60+sm-(S.leadMins||15);
+  const fmt=m=>String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');
+  return{leaveAt:lm>0?fmt(lm):'',preMtgAlert:am>0?fmt(am):''};
+}
+
+function renderStats(){
+  $('s-tasks').textContent=S.tasks.length;$('s-done').textContent=S.tasks.filter(t=>t.done).length;
+  $('s-calls').textContent=S.callbacks.filter(c=>!c.done).length;$('s-mtgs').textContent=S.events.length;
+}
+
+function renderEvents(){
+  const list=$('ev-list');
+  const evts=[...S.events].sort((a,b)=>(a.start||'').localeCompare(b.start||''));
+  if(!evts.length){list.innerHTML='<div class="empty"><strong>No events yet</strong>Connect Outlook in Setup or add manually.</div>';return;}
+  list.innerHTML=evts.map((e,i)=>{
+    const[hh,mm]=(e.start||'09:00').split(':');
+    const barCls=e.source==='apple'?'g':e.source==='manual'?'a':e.source==='flight'?'t':'';
+    return`<div class="ev" style="animation-delay:${i*.05}s">
+      <div class="ev-tc"><div class="ev-hr">${hh}</div><div class="ev-mn">${mm}</div></div>
+      <div class="ev-bar ${barCls}"></div>
+      <div class="ev-bd">
+        <div class="ev-title">${e.title}</div>
+        <div class="ev-sub">${e.start&&e.end?e.start+' – '+e.end:''}${e.location?' · 📍'+e.location:''}</div>
+        <div class="ev-badges">
+          <span class="badge bb">${e.source||'Outlook'}</span>
+          ${e.preMtgAlert?`<span class="badge ba">Alert ${e.preMtgAlert}</span>`:''}
+          ${e.travel?`<span class="badge bp">🚗 ${e.travel}min</span>`:''}
+        </div>
+        ${e.leaveAt?`<div class="ev-leave"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>Leave by ${e.leaveAt}</div>`:''}
+        <div class="ev-acts">
+          <button class="ev-act" data-rt="${i}">↻ Est. Travel</button>
+          <button class="ev-act" data-del-ev="${i}">Remove</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  list.querySelectorAll('[data-del-ev]').forEach(b=>b.addEventListener('click',()=>{S.events.splice(+b.dataset.delEv,1);save();renderEvents();renderStats();}));
+  list.querySelectorAll('[data-rt]').forEach(b=>b.addEventListener('click',async()=>{
+    const idx=+b.dataset.rt;const e=S.events[idx];if(!e.location)return alert('No location set.');
+    b.textContent='…';const mins=await getTravelTime(e.location);
+    if(mins){e.travel=mins;const{leaveAt,preMtgAlert}=calcLeaveTime(e.start,mins);e.leaveAt=leaveAt;e.preMtgAlert=preMtgAlert;
+      if(preMtgAlert)notif('Meeting soon: '+e.title,preMtgAlert);if(leaveAt)notif('Leave now for: '+e.title,leaveAt);save();renderEvents();}
+  }));
+}
+
+function renderTasks(){
+  const list=$('todo-list');
+  const done=S.tasks.filter(t=>t.done).length,total=S.tasks.length;renderStats();
+  if(total){$('prog-card').style.display='block';const pct=Math.round(done/total*100);$('prog-txt').textContent=done+' of '+total+' done';$('prog-pct').textContent=pct+'%';$('prog-fill').style.width=pct+'%';}
+  else $('prog-card').style.display='none';
+  if(!total){list.innerHTML='<div class="empty"><strong>All clear</strong>Add a task below or tap the mic.</div>';return;}
+  list.innerHTML=S.tasks.map((t,i)=>{
+    const ptag=t.priority==='high'?'<span class="badge ba">High</span>':t.priority==='low'?'<span class="badge bb" style="opacity:.6">Low</span>':'';
+    const ttag=t.scheduledTime?`<span class="ttime"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${t.scheduledTime}</span>`:'';
+    const dtag=t.mins?`<span class="ttime"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${t.mins<60?t.mins+'min':Math.floor(t.mins/60)+'h'+(t.mins%60?' '+(t.mins%60)+'min':'')}</span><button class="tedit" data-i="${i}">edit</button>`:`<button class="tedit" data-i="${i}">+ set time</button>`;
+    const aitag=t.aiSug?'<span class="badge bb">✦ AI timed</span>':'';
+    return`<div class="todo ${t.done?'done':''}" style="animation-delay:${i*.04}s">
+      <button class="chk" data-chk="${i}"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></button>
+      <div class="tbd"><div class="ttl">${t.title}</div><div class="tmeta">${ptag}${ttag}${dtag}${aitag}</div></div>
+      <button class="tdel" data-del="${i}"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>`;
+  }).join('');
+  list.querySelectorAll('[data-chk]').forEach(b=>b.addEventListener('click',()=>{S.tasks[+b.dataset.chk].done=!S.tasks[+b.dataset.chk].done;save();renderTasks();}));
+  list.querySelectorAll('[data-del]').forEach(b=>b.addEventListener('click',()=>{S.tasks.splice(+b.dataset.del,1);save();renderTasks();}));
+  list.querySelectorAll('.tedit').forEach(b=>b.addEventListener('click',()=>openTaskSheet(null,+b.dataset.i)));
+}
+
+function renderCallbacks(){
+  const list=$('cb-list');const pending=S.callbacks.filter(c=>!c.done);renderStats();
+  if(!pending.length){list.innerHTML='<div class="empty"><strong>No callbacks pending</strong>Paste SMS below or say "I need to call [name] back".</div>';return;}
+  list.innerHTML=pending.map((c,ri)=>{
+    const i=S.callbacks.indexOf(c);
+    return`<div class="cb" style="animation-delay:${ri*.05}s">
+      <div class="cb-av"><svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg></div>
+      <div class="cb-bd"><div class="cb-name">${c.name}</div><div class="cb-ctx">${c.context||'Return call'}${c.time?' · '+c.time:''}</div></div>
+      <button class="cb-call" data-cbi="${i}">Call</button>
+      <button class="cb-done" data-cbd="${i}">Done ✓</button>
+    </div>`;
+  }).join('');
+  list.querySelectorAll('[data-cbd]').forEach(b=>b.addEventListener('click',()=>{S.callbacks[+b.dataset.cbd].done=true;save();renderCallbacks();}));
+  list.querySelectorAll('[data-cbi]').forEach(b=>b.addEventListener('click',()=>{const c=S.callbacks[+b.dataset.cbi];window.location.href='tel:'+(c.phone||'');}));
+}
+
+function renderEmails(){
+  const list=$('em-list');
+  if(!S.emails.length){list.innerHTML='<div class="empty"><strong>No emails loaded</strong>Connect Outlook in Setup then tap Fetch.</div>';return;}
+  list.innerHTML=S.emails.map((e,i)=>`
+    <div class="em" style="animation-delay:${i*.05}s">
+      <div class="em-row"><div class="em-from">${e.from}</div><div class="em-time">${e.time||''}</div></div>
+      <div class="em-subj">${e.subject}</div><div class="em-prev">${e.preview}</div>
+      <div class="em-acts"><span class="badge ba">📅 Appointment</span>
+        <button class="em-act b" data-eti="${i}">+ Task</button>
+        <button class="em-act g" data-eei="${i}">+ Event</button>
+      </div>
+    </div>`).join('');
+  list.querySelectorAll('[data-eti]').forEach(b=>b.addEventListener('click',()=>openTaskSheet(S.emails[+b.dataset.eti].subject)));
+  list.querySelectorAll('[data-eei]').forEach(b=>b.addEventListener('click',()=>{$('es-name').value=S.emails[+b.dataset.eei].subject;openOv('ev-ov');}));
+}
+
+function renderFlights(){
+  const list=$('flight-list');
+  if(!S.flights.length){list.innerHTML='<div class="empty"><strong>No flights added</strong>Paste your flight confirmation below.</div>';return;}
+  list.innerHTML=S.flights.map((f,i)=>`
+    <div class="flight">
+      <div class="flight-row">
+        <div class="flight-icon"><svg viewBox="0 0 24 24"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 00-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg></div>
+        <div class="flight-body"><div class="flight-route">${f.from} → ${f.to}</div><div class="flight-num">${f.airline||''} ${f.flightNum||''} · ${f.date||''}</div></div>
+        <button class="flight-del" data-fdi="${i}"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      </div>
+      <div class="flight-times">
+        <div class="flight-dep"><div class="flight-t">${f.depTime||'--:--'}</div><div class="flight-ap">${f.fromCode||f.from}</div></div>
+        <div class="flight-mid"><div class="flight-dur">${f.duration||''}</div><div class="flight-line"></div>${f.stops?`<div style="font-size:9px;color:var(--amber)">${f.stops}</div>`:'<div style="font-size:9px;color:var(--green)">Direct</div>'}</div>
+        <div class="flight-arr"><div class="flight-t">${f.arrTime||'--:--'}</div><div class="flight-ap">${f.toCode||f.to}</div></div>
+      </div>
+      <div class="flight-badges">
+        ${f.terminal?`<span class="badge bt">Terminal ${f.terminal}</span>`:''}
+        ${f.gate?`<span class="badge bt">Gate ${f.gate}</span>`:''}
+        ${f.seat?`<span class="badge bb">Seat ${f.seat}</span>`:''}
+        ${f.status?`<span class="badge bg">${f.status}</span>`:''}
+      </div>
+    </div>`).join('');
+  list.querySelectorAll('[data-fdi]').forEach(b=>b.addEventListener('click',()=>{S.flights.splice(+b.dataset.fdi,1);save();renderFlights();}));
+}
+
+function renderReminders(){
+  const list=$('rem-list');
+  if(!S.reminders.length){list.innerHTML='<div class="empty"><strong>No reminders</strong>Add one or say "Remind me to…"</div>';return;}
+  list.innerHTML=S.reminders.map((r,i)=>{
+    const isMtg=r.type==='meeting',isCb=r.type==='callback';
+    const bg=isMtg?'var(--blue-l)':isCb?'var(--red-l)':'var(--green-l)';
+    const sc=isMtg?'var(--blue)':isCb?'var(--red)':'var(--green)';
+    const ico=isMtg?'<path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/>'
+      :isCb?'<path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/>'
+      :'<path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/>';
+    return`<div class="rem" style="animation-delay:${i*.05}s">
+      <div class="rem-ic" style="background:${bg}"><svg viewBox="0 0 24 24" fill="none" stroke="${sc}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${ico}</svg></div>
+      <div class="rem-bd"><div class="rem-title">${r.title}</div><div class="rem-time">${r.time||'No time set'}</div></div>
+      <button class="rem-del" data-rdi="${i}"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>`;
+  }).join('');
+  list.querySelectorAll('[data-rdi]').forEach(b=>b.addEventListener('click',()=>{S.reminders.splice(+b.dataset.rdi,1);save();renderReminders();}));
+}
+
+// ═══════════════════════════════════════
+// OFFLINE DETECTION
+// ═══════════════════════════════════════
+function updateOnlineStatus(){
+  const bar=$('offline-bar');
+  if(navigator.onLine){bar.classList.remove('show');}
+  else{bar.classList.add('show');}
+}
+window.addEventListener('online',updateOnlineStatus);
+window.addEventListener('offline',updateOnlineStatus);
+updateOnlineStatus();
+
+// ═══════════════════════════════════════
+// TIME KEEPER
+// ═══════════════════════════════════════
+let tkRunning=false,tkStart=null,tkInterval=null,tkEditIdx=null;
+
+function fmtMs(ms){
+  const s=Math.floor(ms/1000);
+  return String(Math.floor(s/3600)).padStart(2,'0')+':'+String(Math.floor((s%3600)/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
+}
+function fmtMins(mins){
+  if(!mins&&mins!==0)return'—';
+  return mins<60?mins+'min':Math.floor(mins/60)+'h'+(mins%60?' '+(mins%60)+'min':'');
+}
+
+$('tk-start-btn').addEventListener('click',()=>{
+  if(tkRunning){
+    // STOP
+    clearInterval(tkInterval);tkRunning=false;
+    const elapsed=Date.now()-tkStart;
+    const proj=$('tk-proj').value.trim()||'Unnamed Project';
+    S.timeEntries.unshift({id:Date.now(),project:proj,start:new Date(tkStart).toISOString(),end:new Date().toISOString(),durationMs:elapsed,durationMins:Math.round(elapsed/60000),category:'unbilled',note:''});
+    save();renderTimeEntries();
+    $('tk-display').textContent='00:00:00';$('tk-display').classList.remove('running');
+    $('tk-running-name').textContent='—';
+    $('tk-start-btn').innerHTML='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:6px;"><polygon points="5 3 19 12 5 21 5 3" fill="white" stroke="none"/></svg>Start Timer';
+    $('tk-start-btn').className='tk-start-btn';
+    $('tk-proj').disabled=false;
+  } else {
+    // START
+    const proj=$('tk-proj').value.trim();
+    if(!proj){$('tk-proj').focus();$('tk-proj').style.borderColor='var(--red)';setTimeout(()=>$('tk-proj').style.borderColor='',1500);return;}
+    tkRunning=true;tkStart=Date.now();
+    $('tk-running-name').textContent=proj;
+    $('tk-display').classList.add('running');
+    $('tk-start-btn').className='tk-stop-btn';
+    $('tk-start-btn').innerHTML='<svg viewBox="0 0 24 24" width="16" height="16" fill="white" stroke="none" style="vertical-align:middle;margin-right:6px;"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>Stop &amp; Save';
+    $('tk-proj').disabled=true;
+    tkInterval=setInterval(()=>{$('tk-display').textContent=fmtMs(Date.now()-tkStart);},1000);
+  }
+});
+
+function renderTimeEntries(){
+  const list=$('tk-list');
+  if(!S.timeEntries.length){list.innerHTML='<div class="empty"><strong>No entries yet</strong>Enter a project and start the timer.</div>';return;}
+  list.innerHTML=S.timeEntries.map((e,i)=>{
+    const d=new Date(e.start).toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+    const catCls={'billed':'tk-billed','unbilled':'tk-unbilled','meeting':'tk-meeting','travel':'tk-travel','production':'tk-production'}[e.category]||'tk-unbilled';
+    const catLabel={'billed':'Billed','unbilled':'Not Billed','meeting':'Meeting','travel':'Travel','production':'Production'}[e.category]||e.category;
+    return`<div class="tk-entry" style="animation-delay:${i*.04}s">
+      <div class="tk-dot"></div>
+      <div class="tk-body">
+        <div class="tk-proj">${e.project}<span class="tk-cat ${catCls}">${catLabel}</span></div>
+        <div class="tk-meta">${d}${e.note?' · '+e.note:''}</div>
+      </div>
+      <div class="tk-dur">${fmtMs(e.durationMs||0)}</div>
+      <button class="tk-del" data-tkedit="${i}" style="color:var(--blue);font-size:11px;font-weight:700;text-decoration:underline;padding:4px;">Edit</button>
+      <button class="tk-del" data-tkdel="${i}"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>`;
+  }).join('');
+  list.querySelectorAll('[data-tkdel]').forEach(b=>b.addEventListener('click',()=>{S.timeEntries.splice(+b.dataset.tkdel,1);save();renderTimeEntries();}));
+  list.querySelectorAll('[data-tkedit]').forEach(b=>b.addEventListener('click',()=>openTkEdit(+b.dataset.tkedit)));
+}
+
+function openTkEdit(idx){
+  tkEditIdx=idx;const e=S.timeEntries[idx];
+  $('tke-cat').value=e.category||'unbilled';
+  $('tke-proj').value=e.project||'';
+  $('tke-note').value=e.note||'';
+  openOv('tk-edit-ov');
+}
+$('tke-save').addEventListener('click',()=>{
+  if(tkEditIdx===null)return;
+  S.timeEntries[tkEditIdx].category=$('tke-cat').value;
+  S.timeEntries[tkEditIdx].project=$('tke-proj').value.trim()||S.timeEntries[tkEditIdx].project;
+  S.timeEntries[tkEditIdx].note=$('tke-note').value.trim();
+  save();renderTimeEntries();closeOv('tk-edit-ov');tkEditIdx=null;
+});
+$('tke-cancel').addEventListener('click',()=>closeOv('tk-edit-ov'));
+$('tk-clear-done').addEventListener('click',()=>{if(confirm('Clear all time entries?')){S.timeEntries=[];save();renderTimeEntries();}});
+
+// TIME EXPORT
+$('tk-export-btn').addEventListener('click',()=>exportCSV('time'));
+
+// ═══════════════════════════════════════
+// ODOMETER
+// ═══════════════════════════════════════
+$('add-odo-btn').addEventListener('click',()=>{
+  $('odo-vehicle').value='';$('odo-start').value='';$('odo-finish').value='';
+  $('odo-date').value=new Date().toISOString().slice(0,10);$('odo-purpose').value='';
+  openOv('odo-ov');
+});
+$('odo-save').addEventListener('click',()=>{
+  const vehicle=$('odo-vehicle').value.trim();
+  const kmStart=parseFloat($('odo-start').value)||0;
+  const kmFinish=parseFloat($('odo-finish').value)||0;
+  if(!vehicle){$('odo-vehicle').focus();return;}
+  S.odoEntries.unshift({id:Date.now(),vehicle,kmStart,kmFinish,kmDriven:Math.max(0,kmFinish-kmStart),date:$('odo-date').value,purpose:$('odo-purpose').value.trim()});
+  save();renderOdoEntries();closeOv('odo-ov');
+});
+$('odo-cancel').addEventListener('click',()=>closeOv('odo-ov'));
+
+function renderOdoEntries(){
+  const list=$('odo-list');
+  if(!S.odoEntries.length){list.innerHTML='<div class="empty"><strong>No trips logged</strong>Tap + Trip to add an odometer entry.</div>';return;}
+  list.innerHTML=S.odoEntries.map((e,i)=>`
+    <div class="odo-entry" style="animation-delay:${i*.04}s">
+      <div class="odo-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l2.5 2.5"/></svg></div>
+      <div class="odo-body">
+        <div class="odo-vehicle">${e.vehicle}</div>
+        <div class="odo-meta">${e.date||''}${e.purpose?' · '+e.purpose:''} · Start: ${e.kmStart} · End: ${e.kmFinish}</div>
+      </div>
+      <div class="odo-km">${e.kmDriven.toFixed(1)} km<span>driven</span></div>
+      <button class="odo-del" data-ododel="${i}"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>`).join('');
+  list.querySelectorAll('[data-ododel]').forEach(b=>b.addEventListener('click',()=>{S.odoEntries.splice(+b.dataset.ododel,1);save();renderOdoEntries();}));
+}
+
+// ═══════════════════════════════════════
+// CSV EXPORT
+// ═══════════════════════════════════════
+function exportCSV(type='all'){
+  const rows=[];
+  const esc=v=>`"${String(v||'').replace(/"/g,'""')}"`;
+
+  if(type==='time'||type==='all'){
+    rows.push(['--- TIME KEEPING ---']);
+    rows.push(['Date','Project','Category','Duration (mins)','Duration (hh:mm:ss)','Note'].map(esc).join(','));
+    S.timeEntries.forEach(e=>{
+      const d=e.start?new Date(e.start).toLocaleDateString('en-GB'):'';
+      rows.push([d,e.project,e.category,e.durationMins,fmtMs(e.durationMs||0),e.note].map(esc).join(','));
+    });
+    rows.push([]);
+  }
+
+  if(type==='odo'||type==='all'){
+    rows.push(['--- ODOMETER ---']);
+    rows.push(['Date','Vehicle','KM Start','KM Finish','KM Driven','Purpose'].map(esc).join(','));
+    S.odoEntries.forEach(e=>{
+      rows.push([e.date,e.vehicle,e.kmStart,e.kmFinish,e.kmDriven,e.purpose].map(esc).join(','));
+    });
+  }
+
+  const csv=rows.join('\n');
+  const blob=new Blob([csv],{type:'text/csv'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  const today=new Date().toISOString().slice(0,10);
+  a.href=url;a.download=`dayplanner_${type}_${today}.csv`;
+  document.body.appendChild(a);a.click();
+  setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},500);
+}
+
+$('all-export-btn').addEventListener('click',()=>exportCSV('all'));
+
+// TASK SHEET
+let editIdx=null;
+async function openTaskSheet(pre=null,idx=null){
+  editIdx=idx;$('ts-title').textContent=idx!==null?'Edit Task':'New Task';$('ts-save').textContent=idx!==null?'Save Changes':'Add Task';
+  $('ts-name').value=idx!==null?S.tasks[idx].title:(pre||'');$('ts-mins').value=idx!==null?(S.tasks[idx].mins||''):'';
+  $('ts-prio').value=idx!==null?(S.tasks[idx].priority||'normal'):'normal';$('ts-time').value=idx!==null?(S.tasks[idx].scheduledTime||''):'';
+  $('ai-row').style.display='none';openOv('task-ov');setTimeout(()=>$('ts-name').focus(),360);
+  const n=$('ts-name').value.trim();if(n.length>3)aiTimeSuggest(n);
+  $('ts-name').oninput=()=>{clearTimeout($('ts-name')._t);if($('ts-name').value.trim().length>5)$('ts-name')._t=setTimeout(()=>aiTimeSuggest($('ts-name').value.trim()),900);};
+}
+async function aiTimeSuggest(task){
+  $('ai-txt').textContent='✦ Thinking…';$('ai-row').style.display='flex';
+  try{const t=await ai(`How many minutes should this work task realistically take? Task: "${task}". Reply ONLY with a number.`);
+    const m=parseInt(t.trim());
+    if(m>0){$('ai-txt').textContent='✦ AI suggests: '+(m<60?m+'min':Math.floor(m/60)+'h'+(m%60?' '+(m%60)+'min':''));$('ai-use').onclick=()=>$('ts-mins').value=m;}
+    else $('ai-row').style.display='none';}
+  catch{$('ai-row').style.display='none';}
+}
+$('ts-save').addEventListener('click',()=>{
+  const title=$('ts-name').value.trim();if(!title)return;
+  const obj={title,mins:parseInt($('ts-mins').value)||0,priority:$('ts-prio').value,scheduledTime:$('ts-time').value,done:false,aiSug:$('ai-row').style.display!=='none'&&parseInt($('ts-mins').value)>0};
+  if(editIdx!==null)Object.assign(S.tasks[editIdx],obj);else S.tasks.push({id:Date.now(),...obj});
+  save();renderTasks();closeOv('task-ov');editIdx=null;
+});
+$('ts-cancel').addEventListener('click',()=>closeOv('task-ov'));
+$('clear-done').addEventListener('click',()=>{S.tasks=S.tasks.filter(t=>!t.done);save();renderTasks();});
+$('task-add').addEventListener('click',()=>{const v=$('task-in').value.trim();if(v){openTaskSheet(v);$('task-in').value='';}});
+$('task-in').addEventListener('keydown',e=>{if(e.key==='Enter')$('task-add').click();});
+
+// EVENT SHEET
+$('add-ev-btn').addEventListener('click',()=>openOv('ev-ov'));
+$('es-save').addEventListener('click',async()=>{
+  const title=$('es-name').value.trim();if(!title)return;
+  const loc=$('es-loc').value.trim(),start=$('es-start').value;
+  let travel=0;
+  if(loc&&S.homeBase){travel=await getTravelTime(loc)||0;}
+  const{leaveAt,preMtgAlert}=calcLeaveTime(start,travel);
+  if(preMtgAlert){notif('Meeting soon: '+title,preMtgAlert);S.reminders.push({id:Date.now()+Math.random(),title:'Meeting: '+title,time:preMtgAlert,type:'meeting'});}
+  if(leaveAt){notif('Leave now for: '+title,leaveAt);S.reminders.push({id:Date.now()+Math.random(),title:'Leave for: '+title,time:leaveAt,type:'meeting'});}
+  S.events.push({id:Date.now(),title,start,end:$('es-end').value,location:loc,travel,leaveAt,preMtgAlert,source:'manual'});
+  save();renderEvents();renderReminders();renderStats();closeOv('ev-ov');
+  ['es-name','es-start','es-end','es-loc','es-travel'].forEach(id=>$(id).value='');
+});
+$('es-cancel').addEventListener('click',()=>closeOv('ev-ov'));
+
+// FLIGHT PARSER
+$('flight-parse').addEventListener('click',async()=>{
+  const text=$('flight-area').value.trim();if(!text){alert('Paste flight data first.');return;}
+  $('flight-parse').innerHTML='<span class="spin"></span> Extracting…';$('flight-parse').disabled=true;
+  try{
+    const raw=await ai(`Extract all flight legs from this itinerary. Return ONLY valid JSON array, no markdown:
+[{"from":"city","fromCode":"IATA","to":"city","toCode":"IATA","date":"e.g. 12 Jun 2025","airline":"name","flightNum":"e.g. SA204","depTime":"HH:MM","arrTime":"HH:MM","duration":"e.g. 2h 15min","stops":"1 stop or empty","terminal":"or empty","gate":"or empty","seat":"or empty","status":"confirmed or empty"}]
+If nothing found return [].
+Text:\n${text.substring(0,5000)}`);
+    const items=JSON.parse(raw.replace(/```json|```/g,'').trim());
+    items.forEach(f=>{
+      S.flights.push({...f,id:Date.now()+Math.random()});
+      if(f.depTime&&S.homeBase&&f.fromCode){
+        getTravelTime(f.fromCode+' airport').then(mins=>{
+          if(mins){const[h,m]=f.depTime.split(':').map(Number);const lm=h*60+m-mins-60;
+            if(lm>0){const leaveAt=String(Math.floor(lm/60)).padStart(2,'0')+':'+String(lm%60).padStart(2,'0');
+              S.reminders.push({id:Date.now()+Math.random(),title:`Leave for ${f.fromCode} airport · ${f.flightNum}`,time:leaveAt,type:'meeting'});
+              notif(`Leave for airport now · ${f.flightNum}`,leaveAt);save();renderReminders();}}
+        });
+      }
+    });
+    save();renderFlights();$('flight-area').value='';
+    if(items.length)document.querySelector('[data-tab="flights"]')?.click();
+    else alert('No flight data found.');
+  }catch(e){alert('Parse failed: '+e.message);}
+  $('flight-parse').innerHTML='✦ Extract Flights';$('flight-parse').disabled=false;
+});
+
+// REMINDER SHEET
+$('add-rem-btn').addEventListener('click',()=>openOv('rem-ov'));
+$('rs-save').addEventListener('click',()=>{
+  const title=$('rs-name').value.trim();if(!title)return;
+  const time=$('rs-time').value;
+  S.reminders.push({id:Date.now(),title,time,type:'general'});save();renderReminders();closeOv('rem-ov');
+  $('rs-name').value='';$('rs-time').value='';notif(title,time);
+});
+$('rs-cancel').addEventListener('click',()=>closeOv('rem-ov'));
+
+// SMS PARSER
+$('sms-parse').addEventListener('click',async()=>{
+  const text=$('sms-area').value.trim();if(!text){alert('Paste SMS messages first.');return;}
+  $('sms-parse').innerHTML='<span class="spin"></span> Analysing…';$('sms-parse').disabled=true;
+  try{
+    const raw=await ai(`Parse SMS/iMessage thread. Find ALL missed calls and "call back later" messages.
+Return ONLY JSON array no markdown:
+[{"name":"person name or number","phone":"number if found or empty","context":"brief description","time":"time if mentioned or empty"}]
+If nothing found: []
+SMS:\n${text.substring(0,4000)}`);
+    const items=JSON.parse(raw.replace(/```json|```/g,'').trim());
+    items.forEach(it=>{
+      S.callbacks.push({...it,id:Date.now()+Math.random(),done:false,source:'sms'});
+      S.reminders.push({id:Date.now()+Math.random(),title:'Call back: '+it.name,time:it.time||'',type:'callback'});
+      if(it.time)notif('Call back '+it.name,it.time);
+    });
+    save();renderCallbacks();renderReminders();renderStats();$('sms-area').value='';
+    if(items.length)document.querySelector('[data-tab="callbacks"]')?.click();
+    else alert('No missed calls found.');
+  }catch(e){alert('Parse failed: '+e.message);}
+  $('sms-parse').innerHTML='✦ Extract Callbacks';$('sms-parse').disabled=false;
+});
+
+// MSAL
+async function initMsal(){
+  if(!S.clientId)return;
+  try{
+    S.msalInst=new msal.PublicClientApplication({
+      auth:{
+        clientId:S.clientId,
+        authority:'https://login.microsoftonline.com/common',
+        redirectUri:window.location.href.split('?')[0]
+      },
+      cache:{cacheLocation:'localStorage',storeAuthStateInCookie:true}
+    });
+    await S.msalInst.initialize();
+  }catch(e){console.error('MSAL init error:',e);}
+}
+if(S.clientId)initMsal();
+const SCOPES=['Calendars.Read','Mail.Read','User.Read'];
+$('ms-btn').addEventListener('click',async()=>{
+  const id=$('cfg-cid').value.trim();
+  if(!id){alert('Paste your Client ID first.');return;}
+  S.clientId=id;save();
+  await initMsal();
+  if(!S.msalInst){alert('Could not initialise Microsoft login. Check your Client ID.');return;}
+  try{
+    const r=await S.msalInst.loginPopup({scopes:SCOPES});
+    S.msAccount=r.account;
+    alert('✅ Connected! Tap Save & Close then tap ↻ Refresh.');
+  }catch(e){alert('Sign-in failed: '+e.message);}
+});
+async function getMsToken(){
+  if(!S.msalInst||!S.msAccount)return null;
+  try{const r=await S.msalInst.acquireTokenSilent({scopes:SCOPES,account:S.msAccount});return r.accessToken;}
+  catch{const r=await S.msalInst.acquireTokenPopup({scopes:SCOPES});return r.accessToken;}
+}
+
+// SETUP
+$('setup-open').addEventListener('click',()=>{
+  $('cfg-cid').value=S.clientId;$('cfg-loc').value=S.homeBase;$('cfg-lead').value=S.leadMins||15;
+  openOv('setup-ov');
+});
+$('cfg-save').addEventListener('click',async()=>{
+  S.clientId=$('cfg-cid').value.trim();
+  S.homeBase=$('cfg-loc').value.trim();S.leadMins=parseInt($('cfg-lead').value)||15;
+  save();if(S.clientId)await initMsal();closeOv('setup-ov');
+});
+$('open-guide-from-setup').addEventListener('click',()=>{
+  closeOv('setup-ov');
+  setTimeout(()=>{
+    document.querySelectorAll('.rail-btn').forEach(x=>x.classList.toggle('active',x.dataset.tab==='guide'));
+    document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id==='panel-guide'));
+  },300);
+});
+
+// REFRESH
+$('refresh-btn').addEventListener('click',doRefresh);
+$('fetch-emails').addEventListener('click',doRefresh);
+async function doRefresh(){
+  const btn=$('refresh-btn');btn.innerHTML='<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="1.7" stroke-linecap="round"><span class="spin"></span></svg>';btn.disabled=true;
+  try{
+    if(S.msAccount){
+      const[evts,mails]=await Promise.all([fetchMsCal(),fetchMsMail()]);
+      for(const e of evts){
+        if(S.events.find(x=>x.id===e.id))continue;
+        if(e.location&&S.homeBase){e.travel=await getTravelTime(e.location)||0;}
+        const{leaveAt,preMtgAlert}=calcLeaveTime(e.start,e.travel||0);
+        e.leaveAt=leaveAt;e.preMtgAlert=preMtgAlert;
+        if(preMtgAlert){notif('Meeting soon: '+e.title,preMtgAlert);S.reminders.push({id:Date.now()+Math.random(),title:'Meeting: '+e.title,time:preMtgAlert,type:'meeting'});}
+        if(leaveAt){notif('Leave for: '+e.title,leaveAt);S.reminders.push({id:Date.now()+Math.random(),title:'Leave for: '+e.title,time:leaveAt,type:'meeting'});}
+        S.events.push(e);
+      }
+      S.emails=mails;save();
+    }
+  }catch(e){alert('Error: '+e.message);}
+  renderEvents();renderEmails();renderReminders();renderStats();
+  btn.innerHTML='<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>';
+  btn.disabled=false;
+}
+async function fetchMsCal(){
+  const tok=await getMsToken();if(!tok)return[];
+  const now=new Date(),s=new Date(now.getFullYear(),now.getMonth(),now.getDate(),0,0,0).toISOString(),e=new Date(now.getFullYear(),now.getMonth(),now.getDate(),23,59,59).toISOString();
+  const r=await fetch(`https://graph.microsoft.com/v1.0/me/calendarView?startDateTime=${s}&endDateTime=${e}&$select=id,subject,start,end,location&$orderby=start/dateTime&$top=25`,{headers:{Authorization:'Bearer '+tok}});
+  const d=await r.json();
+  return(d.value||[]).map(e=>({id:e.id,title:e.subject,start:e.start.dateTime?.substring(11,16)||'',end:e.end.dateTime?.substring(11,16)||'',location:e.location?.displayName||'',source:'Outlook'}));
+}
+async function fetchMsMail(){
+  const tok=await getMsToken();if(!tok)return[];
+  const r=await fetch(`https://graph.microsoft.com/v1.0/me/messages?$select=id,subject,from,bodyPreview,receivedDateTime&$filter=isRead eq false&$top=50&$orderby=receivedDateTime desc`,{headers:{Authorization:'Bearer '+tok}});
+  const d=await r.json();
+  const kw=/meeting|appointment|call|invite|zoom|teams|schedule|agenda|conference|book|session|catch.?up|sync|interview|webinar|discuss/i;
+  return(d.value||[]).filter(e=>kw.test(e.subject)||kw.test(e.bodyPreview)).map(e=>({id:e.id,subject:e.subject,from:e.from?.emailAddress?.name||e.from?.emailAddress?.address||'',preview:(e.bodyPreview||'').substring(0,120),time:new Date(e.receivedDateTime).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}));
+}
+
+// BRIEFING
+$('brief-btn').addEventListener('click',async()=>{
+  const btn=$('brief-btn'),txt=$('brief-txt');
+  btn.innerHTML='<span class="spin"></span> Thinking…';btn.disabled=true;
+  try{
+    const t=await ai(`Sharp personal assistant. Crisp warm daily briefing (max 70 words):
+Events: ${JSON.stringify(S.events.map(e=>({t:e.title,at:e.start,loc:e.location,leaveAt:e.leaveAt})))}
+Tasks: ${JSON.stringify(S.tasks.filter(t=>!t.done).map(t=>({t:t.title,mins:t.mins})))}
+Flights: ${JSON.stringify(S.flights.map(f=>({r:f.from+'→'+f.to,dep:f.depTime,fn:f.flightNum})))}
+Callbacks: ${S.callbacks.filter(c=>!c.done).map(c=>c.name).join(', ')||'none'}
+Priorities, travel, flights, callbacks. One energising close. Direct and personal.`);
+    txt.textContent=t;
+  }catch{txt.textContent='Could not generate briefing. Check your connection.';}
+  btn.innerHTML='↻ Regenerate';btn.disabled=false;
+});
+
+// VOICE
+const vfab=$('vfab'),vov=$('vov'),vovTxt=$('vov-txt');
+let recog=null,isListening=false;
+if('webkitSpeechRecognition' in window||'SpeechRecognition' in window){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  recog=new SR();recog.lang='en-GB';recog.continuous=false;recog.interimResults=true;
+  recog.onresult=e=>{const t=Array.from(e.results).map(r=>r[0].transcript).join('');vovTxt.textContent=t;if(e.results[e.results.length-1].isFinal)processVoice(t);};
+  recog.onend=stopListen;recog.onerror=stopListen;
+}else vfab.style.display='none';
+vfab.addEventListener('click',()=>{if(isListening)stopListen();else startListen();});
+function startListen(){if(!recog)return;isListening=true;vfab.classList.add('on');vovTxt.textContent='Listening…';vov.classList.add('show');recog.start();}
+function stopListen(){isListening=false;vfab.classList.remove('on');vov.classList.remove('show');try{recog.stop();}catch{}}
+async function processVoice(text){
+  vovTxt.textContent='✦ Processing: "'+text+'"';vov.classList.add('show');
+  try{
+    const raw=await ai(`Parse voice command. Return ONLY JSON no markdown:
+"${text}"
+{"action":"add_task"|"add_reminder"|"add_callback"|"navigate","title":"...","time":"HH:MM or null","name":"person name or null","tab":"today|tasks|callbacks|emails|flights|reminders|guide or null"}
+Examples:
+"Add task prepare slides" → {"action":"add_task","title":"Prepare slides","time":null,"name":null,"tab":null}
+"Remind me to call the bank at 9am" → {"action":"add_reminder","title":"Call the bank","time":"09:00","name":null,"tab":null}
+"I need to call David back" → {"action":"add_callback","title":"Call back David","time":null,"name":"David","tab":null}
+"Show my flights" → {"action":"navigate","title":null,"time":null,"name":null,"tab":"flights"}`);
+    const cmd=JSON.parse(raw.replace(/```json|```/g,'').trim());
+    if(cmd.action==='add_task'&&cmd.title){
+      S.tasks.push({id:Date.now(),title:cmd.title,mins:0,priority:'normal',done:false,scheduledTime:cmd.time||''});
+      save();renderTasks();vovTxt.textContent='✅ Task added: "'+cmd.title+'"';
+      document.querySelector('[data-tab="tasks"]')?.click();
+    }else if(cmd.action==='add_reminder'&&cmd.title){
+      S.reminders.push({id:Date.now(),title:cmd.title,time:cmd.time||'',type:'general'});
+      save();renderReminders();vovTxt.textContent='🔔 Reminder: "'+cmd.title+'"'+(cmd.time?' at '+cmd.time:'');
+      notif(cmd.title,cmd.time);document.querySelector('[data-tab="reminders"]')?.click();
+    }else if(cmd.action==='add_callback'){
+      const name=cmd.name||'Someone';
+      S.callbacks.push({id:Date.now(),name,context:'Return call',time:'',done:false,source:'voice'});
+      S.reminders.push({id:Date.now()+1,title:'Call back: '+name,time:'',type:'callback'});
+      save();renderCallbacks();renderReminders();renderStats();
+      vovTxt.textContent='📞 Callback logged: '+name;document.querySelector('[data-tab="callbacks"]')?.click();
+    }else if(cmd.action==='navigate'&&cmd.tab){
+      document.querySelector('[data-tab="'+cmd.tab+'"]')?.click();
+      vovTxt.textContent='📍 Switched to '+cmd.tab;
+    }else{
+      vovTxt.textContent='Try: "Add task…" · "Remind me to…" · "I need to call [name] back"';
+    }
+  }catch{vovTxt.textContent='Could not process. Try again.';}
+  setTimeout(()=>vov.classList.remove('show'),2800);
+}
+
+if('Notification' in window&&Notification.permission==='default')Notification.requestPermission();
+renderStats();renderEvents();renderTasks();renderCallbacks();renderEmails();renderFlights();renderReminders();
+renderTimeEntries();renderOdoEntries();
+</script>
+</body>
+</html>
